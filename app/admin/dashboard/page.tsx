@@ -191,6 +191,7 @@ export default function AdminDashboardPage() {
                   <AdminItemRow
                     key={item.id}
                     item={item}
+                    posterEmail={item.users?.email}
                     onStatusChange={handleStatusChange}
                   />
                 ))

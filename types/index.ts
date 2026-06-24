@@ -33,6 +33,9 @@ export interface Item {
   posted_by: string | null;
   created_at: string;
   updated_at: string;
+  users?: {
+    email: string;
+  } | null;
 }
 
 export interface ItemsResponse {

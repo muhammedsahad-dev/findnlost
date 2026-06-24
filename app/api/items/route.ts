@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    let query = supabase.from("items").select("*", { count: "exact" });
+    let query = supabase.from("items").select("*, users(email)", { count: "exact" });
 
     // Status filtering
     if (includeRemoved) {
