@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { itemSchema } from "@/lib/validations/item.schema";
 
 export async function GET(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    let query = supabase.from("items").select("*, users(email)", { count: "exact" });
+    let query = supabase.from("items").select("*", { count: "exact" });
 
     // Status filtering
     if (includeRemoved) {
@@ -47,8 +47,33 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
+    let itemsWithUser = data ?? [];
+
+    // Resolve user emails from Supabase Auth Admin API if user is authenticated
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user && data && data.length > 0) {
+      try {
+        const serviceSupabase = await createServiceClient();
+        const { data: { users }, error: usersError } = await serviceSupabase.auth.admin.listUsers();
+        if (!usersError && users) {
+          const emailMap = new Map(users.map((u) => [u.id, u.email]));
+          itemsWithUser = data.map((item) => ({
+            ...item,
+            users: item.posted_by && emailMap.has(item.posted_by)
+              ? { email: emailMap.get(item.posted_by)! }
+              : null,
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to map user emails from Auth Admin API:", err);
+      }
+    }
+
     return NextResponse.json({
-      items: data ?? [],
+      items: itemsWithUser,
       total: count ?? 0,
       page,
       totalPages: Math.ceil((count ?? 0) / pageSize),
